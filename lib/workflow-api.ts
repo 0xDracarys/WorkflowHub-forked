@@ -1,157 +1,313 @@
-// lib/workflow-api.ts
-import { getSupabaseClient } from "./supabase-client"
+import { Workflow, COLLECTIONS, ApiResponse } from './models'
 
-// --- TYPE DEFINITIONS ---
+export class WorkflowAPI {
+  
+  static async createWorkflow(workflowData: Omit<Workflow, '_id' | 'createdAt' | 'updatedAt' | 'usageCount' | 'rating' | 'reviewCount'>): Promise<ApiResponse<Workflow>> {
+    try {
+      const { default: clientPromise } = await import('./mongodb')
+      const client = await clientPromise
+      const db = client.db('workflowhub')
+      const collection = db.collection<Workflow>(COLLECTIONS.WORKFLOWS)
 
-// This interface matches the 'workflow_steps' table in Supabase.
-export interface SupabaseWorkflowStep {
-  id: string // UUID
-  workflow_id: string
-  title: string
-  description: string | null
-  order_index: number
-  type: "form" | "meeting" | "payment" | "custom"
-  created_at: string
-}
+      const newWorkflow: Workflow = {
+        ...workflowData,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        usageCount: 0,
+        rating: 0,
+        reviewCount: 0
+      }
 
-// This interface matches the 'workflows' table in Supabase.
-export interface SupabaseWorkflow {
-  id: string // UUID
-  user_id: string
-  title: string
-  description: string | null
-  price: number | null
-  created_at: string
-}
-
-// This is a "rich" or "hydrated" type that we'll use on the frontend.
-export interface WorkflowStep extends SupabaseWorkflowStep {
-  iconName: string // The name of the Lucide icon to render
-  color: string // The background color class for the UI
-}
-
-// The primary workflow object for the frontend, including the hydrated steps.
-export interface Workflow extends SupabaseWorkflow {
-  steps: WorkflowStep[]
-}
-
-// --- UI MAPPING & HYDRATION ---
-
-const stepTypeUIMap = {
-  form: { iconName: "FileText", color: "bg-navy-500" },
-  meeting: { iconName: "Calendar", color: "bg-violet-600" },
-  payment: { iconName: "CheckCircle", color: "bg-emerald-600" },
-  custom: { iconName: "Settings", color: "bg-gray-400" },
-}
-
-const hydrateStep = (step: SupabaseWorkflowStep): WorkflowStep => {
-  const uiProps = stepTypeUIMap[step.type] || stepTypeUIMap.custom
-  return {
-    ...step,
-    iconName: uiProps.iconName,
-    color: uiProps.color,
-  }
-}
-
-// --- API FUNCTIONS ---
-
-export const getWorkflow = async (workflowId: string): Promise<Workflow | null> => {
-  const supabase = getSupabaseClient()
-  const { data: workflowData, error: workflowError } = await supabase
-    .from("workflows")
-    .select("*")
-    .eq("id", workflowId)
-    .single()
-
-  if (workflowError) {
-    console.error("Error fetching workflow:", workflowError.message)
-    throw new Error(workflowError.message)
+      const result = await collection.insertOne(newWorkflow)
+      
+      if (result.acknowledged) {
+        const createdWorkflow = await collection.findOne({ _id: result.insertedId })
+        return {
+          success: true,
+          data: createdWorkflow!,
+          message: 'Workflow created successfully'
+        }
+      } else {
+        return {
+          success: false,
+          error: 'Failed to create workflow'
+        }
+      }
+    } catch (error) {
+      console.error('Error creating workflow:', error)
+      return {
+        success: false,
+        error: 'Internal server error'
+      }
+    }
   }
 
-  if (!workflowData) {
-    return null
+  static async getWorkflowsByUserId(userId: string, limit = 10, skip = 0): Promise<ApiResponse<Workflow[]>> {
+    try {
+      const { default: clientPromise } = await import('./mongodb')
+      const client = await clientPromise
+      const db = client.db('workflowhub')
+      const collection = db.collection<Workflow>(COLLECTIONS.WORKFLOWS)
+
+      const workflows = await collection
+        .find({ userId })
+        .sort({ updatedAt: -1 })
+        .limit(limit)
+        .skip(skip)
+        .toArray()
+
+      return {
+        success: true,
+        data: workflows
+      }
+    } catch (error) {
+      console.error('Error fetching user workflows:', error)
+      return {
+        success: false,
+        error: 'Internal server error'
+      }
+    }
   }
 
-  const { data: stepsData, error: stepsError } = await supabase
-    .from("workflow_steps")
-    .select("*")
-    .eq("workflow_id", workflowId)
-    .order("order_index", { ascending: true })
+  static async getPublicWorkflows(category?: string, limit = 20, skip = 0): Promise<ApiResponse<Workflow[]>> {
+    try {
+      const { default: clientPromise } = await import('./mongodb')
+      const client = await clientPromise
+      const db = client.db('workflowhub')
+      const collection = db.collection<Workflow>(COLLECTIONS.WORKFLOWS)
 
-  if (stepsError) {
-    console.error("Error fetching workflow steps:", stepsError.message)
-    throw new Error(stepsError.message)
+      const filter: any = { isPublic: true }
+      if (category) {
+        filter.category = category
+      }
+
+      const workflows = await collection
+        .find(filter)
+        .sort({ usageCount: -1, rating: -1 })
+        .limit(limit)
+        .skip(skip)
+        .toArray()
+
+      return {
+        success: true,
+        data: workflows
+      }
+    } catch (error) {
+      console.error('Error fetching public workflows:', error)
+      return {
+        success: false,
+        error: 'Internal server error'
+      }
+    }
   }
 
-  const hydratedSteps = stepsData.map(hydrateStep)
+  static async getWorkflowById(workflowId: string): Promise<ApiResponse<Workflow>> {
+    try {
+      const { default: clientPromise } = await import('./mongodb')
+      const { ObjectId } = await import('mongodb')
+      const client = await clientPromise
+      const db = client.db('workflowhub')
+      const collection = db.collection<Workflow>(COLLECTIONS.WORKFLOWS)
 
-  return {
-    ...workflowData,
-    steps: hydratedSteps,
-  }
-}
-
-export const createWorkflowStep = async (
-  workflowId: string,
-  stepData: Omit<SupabaseWorkflowStep, "id" | "workflow_id" | "created_at">,
-): Promise<WorkflowStep> => {
-  const supabase = getSupabaseClient()
-  const { data, error } = await supabase
-    .from("workflow_steps")
-    .insert([{ ...stepData, workflow_id: workflowId }])
-    .select()
-    .single()
-
-  if (error || !data) {
-    console.error("Error creating step:", error?.message)
-    throw new Error(error?.message || "Failed to create step")
-  }
-
-  return hydrateStep(data)
-}
-
-export const updateWorkflowStep = async (
-  stepId: string,
-  updates: Partial<Omit<SupabaseWorkflowStep, "id" | "workflow_id" | "created_at">>,
-): Promise<WorkflowStep> => {
-  const supabase = getSupabaseClient()
-  const { data, error } = await supabase
-    .from("workflow_steps")
-    .update(updates)
-    .eq("id", stepId)
-    .select()
-    .single()
-
-  if (error || !data) {
-    console.error("Error updating step:", error?.message)
-    throw new Error(error?.message || "Failed to update step")
+      const workflow = await collection.findOne({ _id: new ObjectId(workflowId) })
+      
+      if (workflow) {
+        return {
+          success: true,
+          data: workflow
+        }
+      } else {
+        return {
+          success: false,
+          error: 'Workflow not found'
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching workflow:', error)
+      return {
+        success: false,
+        error: 'Internal server error'
+      }
+    }
   }
 
-  return hydrateStep(data)
-}
+  static async updateWorkflow(workflowId: string, userId: string, updateData: Partial<Workflow>): Promise<ApiResponse<Workflow>> {
+    try {
+      const { default: clientPromise } = await import('./mongodb')
+      const { ObjectId } = await import('mongodb')
+      const client = await clientPromise
+      const db = client.db('workflowhub')
+      const collection = db.collection<Workflow>(COLLECTIONS.WORKFLOWS)
 
-export const deleteWorkflowStep = async (stepId: string): Promise<{ success: true }> => {
-  const supabase = getSupabaseClient()
-  const { error } = await supabase.from("workflow_steps").delete().eq("id", stepId)
+      // Ensure user owns the workflow
+      const existingWorkflow = await collection.findOne({ 
+        _id: new ObjectId(workflowId), 
+        userId 
+      })
 
-  if (error) {
-    console.error("Error deleting step:", error.message)
-    throw new Error(error.message)
+      if (!existingWorkflow) {
+        return {
+          success: false,
+          error: 'Workflow not found or access denied'
+        }
+      }
+
+      const result = await collection.findOneAndUpdate(
+        { _id: new ObjectId(workflowId) },
+        { 
+          $set: { 
+            ...updateData, 
+            updatedAt: new Date() 
+          } 
+        },
+        { returnDocument: 'after' }
+      )
+
+      if (result) {
+        return {
+          success: true,
+          data: result,
+          message: 'Workflow updated successfully'
+        }
+      } else {
+        return {
+          success: false,
+          error: 'Failed to update workflow'
+        }
+      }
+    } catch (error) {
+      console.error('Error updating workflow:', error)
+      return {
+        success: false,
+        error: 'Internal server error'
+      }
+    }
   }
 
-  return { success: true }
-}
+  static async deleteWorkflow(workflowId: string, userId: string): Promise<ApiResponse> {
+    try {
+      const { default: clientPromise } = await import('./mongodb')
+      const { ObjectId } = await import('mongodb')
+      const client = await clientPromise
+      const db = client.db('workflowhub')
+      const collection = db.collection<Workflow>(COLLECTIONS.WORKFLOWS)
 
-export const reorderWorkflowSteps = async (
-  updates: { id: string; order_index: number }[],
-): Promise<{ success: true }> => {
-  const supabase = getSupabaseClient()
-  const { error } = await supabase.from("workflow_steps").upsert(updates)
+      const result = await collection.deleteOne({ 
+        _id: new ObjectId(workflowId), 
+        userId 
+      })
 
-  if (error) {
-    console.error("Error reordering steps:", error.message)
-    throw new Error(error.message)
+      if (result.deletedCount > 0) {
+        return {
+          success: true,
+          message: 'Workflow deleted successfully'
+        }
+      } else {
+        return {
+          success: false,
+          error: 'Workflow not found or access denied'
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting workflow:', error)
+      return {
+        success: false,
+        error: 'Internal server error'
+      }
+    }
   }
 
-  return { success: true }
+  static async incrementUsageCount(workflowId: string): Promise<ApiResponse> {
+    try {
+      const { default: clientPromise } = await import('./mongodb')
+      const { ObjectId } = await import('mongodb')
+      const client = await clientPromise
+      const db = client.db('workflowhub')
+      const collection = db.collection<Workflow>(COLLECTIONS.WORKFLOWS)
+
+      const result = await collection.updateOne(
+        { _id: new ObjectId(workflowId) },
+        { $inc: { usageCount: 1 } }
+      )
+
+      if (result.modifiedCount > 0) {
+        return {
+          success: true,
+          message: 'Usage count updated'
+        }
+      } else {
+        return {
+          success: false,
+          error: 'Workflow not found'
+        }
+      }
+    } catch (error) {
+      console.error('Error updating usage count:', error)
+      return {
+        success: false,
+        error: 'Internal server error'
+      }
+    }
+  }
+
+  static async getWorkflowCategories(): Promise<ApiResponse<string[]>> {
+    try {
+      const { default: clientPromise } = await import('./mongodb')
+      const client = await clientPromise
+      const db = client.db('workflowhub')
+      const collection = db.collection<Workflow>(COLLECTIONS.WORKFLOWS)
+
+      const categories = await collection.distinct('category', { isPublic: true })
+
+      return {
+        success: true,
+        data: categories.filter(Boolean) // Remove null/undefined values
+      }
+    } catch (error) {
+      console.error('Error fetching workflow categories:', error)
+      return {
+        success: false,
+        error: 'Internal server error'
+      }
+    }
+  }
+
+  static async searchWorkflows(query: string, category?: string, limit = 20): Promise<ApiResponse<Workflow[]>> {
+    try {
+      const { default: clientPromise } = await import('./mongodb')
+      const client = await clientPromise
+      const db = client.db('workflowhub')
+      const collection = db.collection<Workflow>(COLLECTIONS.WORKFLOWS)
+
+      const searchFilter: any = {
+        isPublic: true,
+        $or: [
+          { title: { $regex: query, $options: 'i' } },
+          { description: { $regex: query, $options: 'i' } },
+          { tags: { $in: [new RegExp(query, 'i')] } }
+        ]
+      }
+
+      if (category) {
+        searchFilter.category = category
+      }
+
+      const workflows = await collection
+        .find(searchFilter)
+        .sort({ rating: -1, usageCount: -1 })
+        .limit(limit)
+        .toArray()
+
+      return {
+        success: true,
+        data: workflows
+      }
+    } catch (error) {
+      console.error('Error searching workflows:', error)
+      return {
+        success: false,
+        error: 'Internal server error'
+      }
+    }
+  }
 }

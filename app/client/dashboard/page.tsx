@@ -32,17 +32,17 @@ export default function ClientDashboardPage() {
   const [isUploading, setIsUploading] = useState(false)
 
   const projectDetails = {
-    title: "UK Student Visa Process",
-    consultant: "Sarah Chen",
+    title: "Example Service Process",
+    consultant: "Your Provider",
     startDate: "January 15, 2024",
     expectedCompletion: "March 1, 2024",
-    currentStage: "Document Review",
+    currentStage: "In Progress",
     progress: 65,
-    nextMilestone: "Interview Preparation",
-    totalInvestment: "$1,200",
-    paidAmount: "$600",
-    nextPayment: "$600",
-    nextPaymentDue: "February 15, 2024",
+    nextMilestone: "Next Step",
+    totalInvestment: "$XXX",
+    paidAmount: "$XXX",
+    nextPayment: "$XXX",
+    nextPaymentDue: "TBD",
   }
 
   const timeline = [
@@ -67,12 +67,12 @@ export default function ClientDashboardPage() {
     {
       id: 3,
       title: "Application Review",
-      description: "Sarah is reviewing your application materials",
+      description: "Your provider is reviewing your submitted materials",
       status: "active",
       date: "In Progress",
       icon: FileText,
       color: "bg-violet-500",
-      nextAction: "Waiting for Sarah's feedback on personal statement",
+      nextAction: "Waiting for provider feedback and next steps",
     },
     {
       id: 4,
@@ -97,12 +97,12 @@ export default function ClientDashboardPage() {
   const messages = [
     {
       id: 1,
-      sender: "Sarah Chen",
+      sender: "Your Provider",
       message:
-        "Hi! I've reviewed all your documents and they look great. I have a few minor suggestions for your personal statement that will strengthen your application.",
+        "Hi! I've reviewed your submission and have some feedback to share. Let's schedule a time to discuss the next steps.",
       time: "2:30 PM",
       isConsultant: true,
-      avatar: "/coach-testimonial.png",
+      avatar: "/placeholder-avatar.svg",
     },
     {
       id: 2,
@@ -115,12 +115,12 @@ export default function ClientDashboardPage() {
     },
     {
       id: 3,
-      sender: "Sarah Chen",
+      sender: "Your Provider",
       message:
-        "I've sent you a calendar link. Also, I'm attaching a revised version of your personal statement with my suggested changes highlighted.",
+        "I've sent you a calendar link. Also, I'm preparing some resources that will help with your next milestone.",
       time: "3:00 PM",
       isConsultant: true,
-      avatar: "/coach-testimonial.png",
+      avatar: "/placeholder-avatar.svg",
     },
   ]
 
@@ -166,9 +166,9 @@ export default function ClientDashboardPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <img
-                src="/coach-testimonial.png"
-                alt="Sarah Chen"
-                className="w-12 h-12 rounded-full border-2 border-violet-200"
+                src="/placeholder-avatar.svg"
+                alt={projectDetails.consultant}
+                className="w-12 h-12 rounded-full border-2 border-violet-200 bg-gray-100"
               />
               <div>
                 <h1 className="text-xl font-bold text-navy-900">{projectDetails.title}</h1>
@@ -228,7 +228,7 @@ export default function ClientDashboardPage() {
                 <div>
                   <h3 className="font-semibold text-violet-800 mb-1">Action Required</h3>
                   <p className="text-violet-700 text-sm">
-                    Sarah has reviewed your documents and provided feedback. Please check the messages below and
+                    Your provider has reviewed your submission and provided feedback. Please check the messages below and
                     schedule your next call.
                   </p>
                 </div>
@@ -473,12 +473,12 @@ export default function ClientDashboardPage() {
             <Card className="p-6 border-navy-100">
               <div className="text-center">
                 <img
-                  src="/coach-testimonial.png"
-                  alt="Sarah Chen"
-                  className="w-16 h-16 rounded-full border-2 border-violet-200 mx-auto mb-3"
+                  src="/placeholder-avatar.svg"
+                  alt={projectDetails.consultant}
+                  className="w-16 h-16 rounded-full border-2 border-violet-200 mx-auto mb-3 bg-gray-100"
                 />
-                <h4 className="font-semibold text-navy-900 mb-1">Sarah Chen</h4>
-                <p className="text-navy-600 text-sm mb-3">Immigration Consultant</p>
+                <h4 className="font-semibold text-navy-900 mb-1">{projectDetails.consultant}</h4>
+                <p className="text-navy-600 text-sm mb-3">Service Provider</p>
 
                 <div className="flex items-center justify-center space-x-1 mb-4">
                   {[...Array(5)].map((_, i) => (

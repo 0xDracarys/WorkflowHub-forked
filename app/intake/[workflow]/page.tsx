@@ -160,23 +160,23 @@ export default function IntakeFormPage({ params }: { params: { workflow: string 
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8 pt-8">
-          <Link
-            href="/hub/sarahchen"
-            className="inline-flex items-center space-x-2 text-navy-600 hover:text-violet-600 transition-colors mb-6"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Back to Sarah's Hub</span>
-          </Link>
+            <Link
+              href="/hub/template"
+              className="inline-flex items-center space-x-2 text-navy-600 hover:text-violet-600 transition-colors mb-6"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to Provider Hub</span>
+            </Link>
 
           <div className="flex items-center justify-center space-x-3 mb-6">
             <img
-              src="/coach-testimonial.png"
-              alt="Sarah Chen"
-              className="w-12 h-12 rounded-full border-2 border-violet-200"
+              src="/placeholder-avatar.svg"
+              alt="Service Provider"
+              className="w-12 h-12 rounded-full border-2 border-violet-200 bg-gray-100"
             />
             <div className="text-left">
               <h1 className="text-2xl font-bold text-navy-900">Start Your Journey</h1>
-              <p className="text-navy-600">with Sarah Chen</p>
+              <p className="text-navy-600">with Your Provider</p>
             </div>
           </div>
 
@@ -410,7 +410,7 @@ export default function IntakeFormPage({ params }: { params: { workflow: string 
                     <div>
                       <h4 className="font-semibold text-navy-800 mb-1">Secure Upload</h4>
                       <p className="text-navy-700 text-sm">
-                        Your documents are encrypted and stored securely. Only you and Sarah will have access to them.
+                        Your documents are encrypted and stored securely. Only you and your provider will have access to them.
                       </p>
                     </div>
                   </div>
@@ -494,7 +494,7 @@ export default function IntakeFormPage({ params }: { params: { workflow: string 
                 <div className="p-4 bg-violet-50 rounded-lg border border-violet-200">
                   <h4 className="font-semibold text-violet-800 mb-2">What happens next?</h4>
                   <ol className="text-violet-700 text-sm space-y-1">
-                    <li>1. Sarah will review your application within 24 hours</li>
+                    <li>1. Your provider will review your application within 24 hours</li>
                     <li>2. You'll receive a welcome email with next steps</li>
                     <li>3. Your first milestone will be scheduled</li>
                     <li>4. You'll get access to your personal project dashboard</li>

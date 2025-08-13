@@ -53,16 +53,16 @@ export function HeroSection() {
 
             <div className="grid grid-cols-3 gap-8 pt-8 border-t border-navy-100">
               <div className="text-center">
-                <div className="text-2xl font-bold text-navy-900">15,000+</div>
-                <div className="text-sm text-navy-600">Active Workflows</div>
+                <div className="text-2xl font-bold text-navy-900">10,000+</div>
+                <div className="text-sm text-navy-600">Professionals Served</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-navy-900">$2.4M+</div>
-                <div className="text-sm text-navy-600">Revenue Processed</div>
+                <div className="text-2xl font-bold text-navy-900">99.5%</div>
+                <div className="text-sm text-navy-600">Uptime Guarantee</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-navy-900">98%</div>
-                <div className="text-sm text-navy-600">Client Satisfaction</div>
+                <div className="text-2xl font-bold text-navy-900">24/7</div>
+                <div className="text-sm text-navy-600">Support Available</div>
               </div>
             </div>
           </div>
@@ -77,12 +77,12 @@ export function HeroSection() {
                       <Users className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <div className="font-semibold text-navy-900">Sarah Chen</div>
-                      <div className="text-sm text-navy-500">Business Coach</div>
+                      <div className="font-semibold text-navy-900">Professional Hub</div>
+                      <div className="text-sm text-navy-500">Service Business</div>
                     </div>
                   </div>
                   <div className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm font-medium">
-                    Verified Pro
+                    Active
                   </div>
                 </div>
 
@@ -94,9 +94,9 @@ export function HeroSection() {
 
                   <div className="space-y-2">
                     {[
-                      { name: "VIP Coaching Program", clients: 12, color: "bg-violet-500" },
-                      { name: "Brand Strategy Intensive", clients: 8, color: "bg-emerald-500" },
-                      { name: "Content Audit Service", clients: 24, color: "bg-navy-500" },
+                      { name: "Client Onboarding", clients: 12, color: "bg-violet-500" },
+                      { name: "Service Delivery", clients: 8, color: "bg-emerald-500" },
+                      { name: "Follow-up Process", clients: 6, color: "bg-navy-500" },
                     ].map((workflow, index) => (
                       <div key={index} className="flex items-center space-x-3 p-3 bg-navy-50 rounded-lg">
                         <div className={`w-3 h-3 rounded-full ${workflow.color}`} />

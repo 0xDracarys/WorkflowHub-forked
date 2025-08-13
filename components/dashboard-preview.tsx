@@ -20,7 +20,7 @@ export function DashboardPreview() {
             <div className="flex items-center justify-between text-white">
               <div>
                 <h3 className="text-2xl font-bold">Workflow Pipeline</h3>
-                <p className="opacity-90">8 active workflows • 47 clients in progress • $12,400 pending</p>
+                <p className="opacity-90">Active workflows • Clients in progress • Revenue tracking</p>
               </div>
               <div className="flex items-center space-x-4">
                 <Button
@@ -69,9 +69,9 @@ export function DashboardPreview() {
                 <div className="space-y-4">
                   {[
                     {
-                      client: "Alex Rodriguez",
-                      workflow: "VIP Coaching Program",
-                      stage: "Strategy Call",
+                      client: "Client A",
+                      workflow: "Professional Service",
+                      stage: "Discovery Phase",
                       progress: 35,
                       nextAction: "Schedule follow-up",
                       amount: "$2,500",
@@ -79,8 +79,8 @@ export function DashboardPreview() {
                       stageColor: "bg-emerald-500",
                     },
                     {
-                      client: "Maya Patel",
-                      workflow: "Brand Audit Service",
+                      client: "Client B",
+                      workflow: "Consultation Service",
                       stage: "Document Review",
                       progress: 75,
                       nextAction: "Send final report",
@@ -89,8 +89,8 @@ export function DashboardPreview() {
                       stageColor: "bg-navy-500",
                     },
                     {
-                      client: "David Chen",
-                      workflow: "Content Strategy",
+                      client: "Client C",
+                      workflow: "Advisory Service",
                       stage: "Proposal Sent",
                       progress: 15,
                       nextAction: "Follow up on proposal",
@@ -181,9 +181,9 @@ export function DashboardPreview() {
                   </div>
                   <div className="space-y-3">
                     {[
-                      { action: "Follow up with 3 pending clients", urgent: true },
-                      { action: "Review 2 completed workflows", urgent: false },
-                      { action: "Update VIP program pricing", urgent: false },
+                      { action: "Follow up with pending clients", urgent: true },
+                      { action: "Review completed workflows", urgent: false },
+                      { action: "Update service pricing", urgent: false },
                       { action: "Schedule team check-in", urgent: false },
                     ].map((item, index) => (
                       <div key={index} className="flex items-center justify-between py-2">

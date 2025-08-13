@@ -20,12 +20,12 @@ export function Navigation() {
             <a href="#workflow" className="text-navy-600 hover:text-violet-600 transition-colors font-medium">
               Workflow Builder
             </a>
-            <a href="#features" className="text-navy-600 hover:text-violet-600 transition-colors font-medium">
+            <Link href="/features" className="text-navy-600 hover:text-violet-600 transition-colors font-medium">
               Features
-            </a>
-            <a href="#pricing" className="text-navy-600 hover:text-violet-600 transition-colors font-medium">
+            </Link>
+            <Link href="/pricing" className="text-navy-600 hover:text-violet-600 transition-colors font-medium">
               Pricing
-            </a>
+            </Link>
           </div>
 
           <div className="flex items-center space-x-4">

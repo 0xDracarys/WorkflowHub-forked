@@ -91,7 +91,7 @@ export function WorkflowShowcase() {
             <Card className="p-8 bg-white/95 backdrop-blur-sm border-navy-200 shadow-2xl">
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-lg font-semibold text-navy-900">VIP Coaching Workflow</h4>
+                  <h4 className="text-lg font-semibold text-navy-900">Professional Service Workflow</h4>
                   <Button size="sm" variant="outline" className="text-violet-600 border-violet-200 bg-transparent">
                     <Plus className="w-4 h-4 mr-1" />
                     Add Step

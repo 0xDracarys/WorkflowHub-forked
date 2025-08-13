@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useUser, UserButton } from '@clerk/nextjs'
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
@@ -24,15 +25,77 @@ import {
   Filter,
   Eye,
   Edit,
+  AlertCircle,
 } from "lucide-react"
 import Link from "next/link"
+import { WorkflowShareModal } from "@/components/workflow/workflow-share-modal"
 
 export default function DashboardPage() {
+  const { user, isLoaded } = useUser()
   const [copiedLink, setCopiedLink] = useState(false)
   const [activeTab, setActiveTab] = useState("overview")
   const [selectedClient, setSelectedClient] = useState<number | null>(null)
+  const [workflows, setWorkflows] = useState<any[]>([])
+  const [clients, setClients] = useState<any[]>([])
+  const [pipelineStats, setPipelineStats] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [userProfile, setUserProfile] = useState<any>(null)
 
-  const shareableLink = "workflowhub.com/sarahchen"
+  const shareableLink = userProfile?.username ? `workflowhub.com/${userProfile.username}` : "workflowhub.com/profile"
+
+  // Fetch user data and workflows
+  useEffect(() => {
+    if (!isLoaded || !user) return
+
+    const fetchData = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+
+        // Fetch user profile
+        const userResponse = await fetch('/api/users')
+        const userData = await userResponse.json()
+        
+        if (userData.success) {
+          setUserProfile(userData.data)
+        }
+
+        // Fetch user workflows
+        const workflowResponse = await fetch('/api/workflows?type=user')
+        const workflowData = await workflowResponse.json()
+        
+        if (workflowData.success) {
+          setWorkflows(workflowData.data)
+        } else {
+          setError(workflowData.error || 'Failed to load workflows')
+        }
+
+        // Fetch client data
+        const clientsResponse = await fetch('/api/clients')
+        const clientsData = await clientsResponse.json()
+        
+        if (clientsData.success) {
+          setClients(clientsData.data)
+        }
+
+        // Fetch pipeline statistics
+        const statsResponse = await fetch('/api/clients?type=stats')
+        const statsData = await statsResponse.json()
+        
+        if (statsData.success) {
+          setPipelineStats(statsData.data)
+        }
+      } catch (err) {
+        console.error('Error fetching data:', err)
+        setError('An unexpected error occurred')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [isLoaded, user])
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(`https://${shareableLink}`)
@@ -40,143 +103,106 @@ export default function DashboardPage() {
     setTimeout(() => setCopiedLink(false), 2000)
   }
 
+  // Calculate stats from real data
   const stats = [
     {
-      title: "Total Revenue",
-      value: "$12,400",
-      change: "+23%",
-      icon: DollarSign,
+      title: "Total Workflows",
+      value: workflows.length.toString(),
+      change: `${workflows.filter(w => w.isPublic).length} published`,
+      icon: Workflow,
+      color: "from-violet-500 to-violet-600",
+    },
+    {
+      title: "Total Usage",
+      value: workflows.reduce((acc, w) => acc + (w.usageCount || 0), 0).toString(),
+      change: "All time",
+      icon: TrendingUp,
       color: "from-emerald-500 to-emerald-600",
     },
     {
-      title: "Active Clients",
-      value: "18",
-      change: "+5 this week",
+      title: "Avg Rating",
+      value: workflows.length > 0 
+        ? (workflows.reduce((acc, w) => acc + (w.rating || 0), 0) / workflows.length).toFixed(1)
+        : "0.0",
+      change: `${workflows.reduce((acc, w) => acc + (w.reviewCount || 0), 0)} reviews`,
       icon: Users,
-      color: "from-violet-500 to-violet-600",
+      color: "from-navy-500 to-navy-600",
     },
-    { title: "Workflows", value: "3", change: "2 published", icon: Workflow, color: "from-navy-500 to-navy-600" },
     {
-      title: "Completion Rate",
-      value: "94%",
-      change: "+8% this month",
-      icon: TrendingUp,
+      title: "Categories",
+      value: new Set(workflows.map(w => w.category).filter(Boolean)).size.toString(),
+      change: "Unique types",
+      icon: DollarSign,
       color: "from-emerald-600 to-violet-600",
     },
   ]
 
-  const workflows = [
-    {
-      id: 1,
-      name: "UK Student Visa Process",
-      clients: 12,
-      revenue: "$14,400",
-      completionRate: 92,
-      status: "active",
-      link: "workflowhub.com/sarahchen/visa",
-      created: "2 weeks ago",
-    },
-    {
-      id: 2,
-      name: "Business Strategy Intensive",
-      clients: 6,
-      revenue: "$15,000",
-      completionRate: 100,
-      status: "active",
-      link: "workflowhub.com/sarahchen/strategy",
-      created: "1 month ago",
-    },
-    {
-      id: 3,
-      name: "Quick Consultation Call",
-      clients: 24,
-      revenue: "$2,400",
-      completionRate: 98,
-      status: "active",
-      link: "workflowhub.com/sarahchen/consult",
-      created: "3 weeks ago",
-    },
-  ]
+  // Format workflows for display
+  const formatWorkflows = workflows.map(workflow => ({
+    id: workflow._id,
+    name: workflow.title,
+    description: workflow.description,
+    usage: workflow.usageCount || 0,
+    rating: workflow.rating || 0,
+    status: workflow.isPublic ? "active" : "draft",
+    category: workflow.category || "General",
+    link: `workflowhub.com/${userProfile?.username || 'user'}/${workflow._id}`,
+    created: new Date(workflow.createdAt).toLocaleDateString(),
+    steps: workflow.steps?.length || 0
+  }))
 
+  // Create real client pipeline from database data
   const clientPipeline = [
     {
       stage: "New Applications",
-      clients: [
-        {
-          id: 1,
-          name: "Emma Wilson",
-          workflow: "UK Student Visa",
-          applied: "2 hours ago",
-          avatar: "/client-avatar-1.png",
-        },
-        {
-          id: 2,
-          name: "James Chen",
-          workflow: "Business Strategy",
-          applied: "5 hours ago",
-          avatar: "/client-avatar-2.png",
-        },
-        {
-          id: 3,
-          name: "Sofia Rodriguez",
-          workflow: "Quick Consult",
-          applied: "1 day ago",
-          avatar: "/client-avatar-3.png",
-        },
-      ],
+      clients: clients.filter(client => client.status === 'new').map(client => ({
+        id: client._id,
+        name: client.name,
+        workflow: workflows.find(w => w._id === client.workflowId)?.title || 'Unknown Workflow',
+        applied: new Date(client.createdAt).toLocaleDateString(),
+        avatar: client.avatar || "/placeholder.svg",
+        email: client.email
+      })),
       color: "bg-violet-100 border-violet-200",
       headerColor: "bg-violet-500",
     },
     {
       stage: "In Progress",
-      clients: [
-        { id: 4, name: "Alex Rodriguez", workflow: "UK Student Visa", progress: 65, avatar: "/client-avatar-1.png" },
-        { id: 5, name: "Maya Patel", workflow: "Business Strategy", progress: 80, avatar: "/client-avatar-2.png" },
-        { id: 6, name: "David Chen", workflow: "UK Student Visa", progress: 25, avatar: "/client-avatar-3.png" },
-        { id: 7, name: "Lisa Park", workflow: "Business Strategy", progress: 45, avatar: "/client-avatar-1.png" },
-      ],
+      clients: clients.filter(client => client.status === 'in_progress').map(client => ({
+        id: client._id,
+        name: client.name,
+        workflow: workflows.find(w => w._id === client.workflowId)?.title || 'Unknown Workflow',
+        progress: client.progress || 0,
+        avatar: client.avatar || "/placeholder.svg",
+        email: client.email,
+        currentStep: client.currentStep
+      })),
       color: "bg-emerald-100 border-emerald-200",
       headerColor: "bg-emerald-500",
     },
     {
       stage: "Review & Approval",
-      clients: [
-        {
-          id: 8,
-          name: "Michael Brown",
-          workflow: "UK Student Visa",
-          review: "Documents",
-          avatar: "/client-avatar-2.png",
-        },
-        {
-          id: 9,
-          name: "Anna Kim",
-          workflow: "Business Strategy",
-          review: "Final Plan",
-          avatar: "/client-avatar-3.png",
-        },
-      ],
+      clients: clients.filter(client => client.status === 'review').map(client => ({
+        id: client._id,
+        name: client.name,
+        workflow: workflows.find(w => w._id === client.workflowId)?.title || 'Unknown Workflow',
+        review: client.currentStep || 'Pending Review',
+        avatar: client.avatar || "/placeholder.svg",
+        email: client.email
+      })),
       color: "bg-navy-100 border-navy-200",
       headerColor: "bg-navy-500",
     },
     {
       stage: "Completed",
-      clients: [
-        {
-          id: 10,
-          name: "Tom Wilson",
-          workflow: "Quick Consult",
-          completed: "Yesterday",
-          avatar: "/client-avatar-1.png",
-        },
-        {
-          id: 11,
-          name: "Sarah Lee",
-          workflow: "UK Student Visa",
-          completed: "2 days ago",
-          avatar: "/client-avatar-2.png",
-        },
-      ],
+      clients: clients.filter(client => client.status === 'completed').map(client => ({
+        id: client._id,
+        name: client.name,
+        workflow: workflows.find(w => w._id === client.workflowId)?.title || 'Unknown Workflow',
+        completed: new Date(client.updatedAt).toLocaleDateString(),
+        avatar: client.avatar || "/placeholder.svg",
+        email: client.email
+      })),
       color: "bg-emerald-50 border-emerald-200",
       headerColor: "bg-emerald-600",
     },
@@ -216,14 +242,22 @@ export default function DashboardPage() {
                 <Button variant="ghost" size="sm">
                   <Bell className="w-5 h-5" />
                 </Button>
-                <Link href="/settings">
-                  <Button variant="ghost" size="sm">
+                <Link href="/google-integration">
+                  <Button variant="ghost" size="sm" title="Google Integration">
                     <Settings className="w-5 h-5" />
                   </Button>
                 </Link>
-                <Button variant="ghost" size="sm">
-                  <User className="w-5 h-5" />
-                </Button>
+                <UserButton 
+                  afterSignOutUrl="/"
+                  appearance={{
+                    elements: {
+                      avatarBox: "w-8 h-8",
+                      userButtonPopoverCard: "bg-white shadow-lg border border-navy-100",
+                      userButtonPopoverActionButton: "text-navy-600 hover:bg-navy-50",
+                      userButtonPopoverActionButtonText: "text-navy-900",
+                    }
+                  }}
+                />
               </div>
             </div>
           </div>
@@ -233,8 +267,12 @@ export default function DashboardPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Welcome Section */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-navy-900 mb-2">Welcome back, Sarah! 👋</h1>
-          <p className="text-navy-600">You have 3 active workflows and 18 clients in progress</p>
+          <h1 className="text-3xl font-bold text-navy-900 mb-2">
+            Welcome back, {userProfile?.firstName || user?.firstName || 'User'}! 👋
+          </h1>
+          <p className="text-navy-600">
+            You have {workflows.filter(w => w.isPublic).length} active workflows and {workflows.reduce((acc, w) => acc + (w.usageCount || 0), 0)} total usage
+          </p>
         </div>
 
         {/* Shareable Link CTA */}
@@ -272,7 +310,7 @@ export default function DashboardPage() {
                     className="bg-white/20 hover:bg-white/30 text-white border-white/30"
                   >
                     <ExternalLink className="w-4 h-4 mr-2" />
-                    Preview
+                    Preview Template
                   </Button>
                 </Link>
               </div>
@@ -426,70 +464,115 @@ export default function DashboardPage() {
               </Link>
             </div>
 
-            <div className="space-y-4">
-              {workflows.map((workflow) => (
-                <Card key={workflow.id} className="p-6 hover:shadow-lg transition-shadow border-navy-100">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="font-semibold text-navy-900 mb-1">{workflow.name}</h3>
-                      <p className="text-sm text-navy-500 font-mono">{workflow.link}</p>
-                      <p className="text-xs text-navy-400 mt-1">Created {workflow.created}</p>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge className="bg-emerald-100 text-emerald-700">Active</Badge>
-                      <div className="flex items-center space-x-1">
-                        <Link href={`/workflow/${workflow.id}/edit`}>
+            {loading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600 mx-auto"></div>
+                <p className="text-navy-600 mt-2">Loading workflows...</p>
+              </div>
+            ) : error ? (
+              <div className="text-center py-8">
+                <div className="w-16 h-16 bg-red-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+                  <AlertCircle className="w-8 h-8 text-red-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-navy-900 mb-2">Error Loading Workflows</h3>
+                <p className="text-navy-600 mb-4">{error}</p>
+                <Button onClick={() => window.location.reload()} variant="outline">
+                  Try Again
+                </Button>
+              </div>
+            ) : formatWorkflows.length === 0 ? (
+              <div className="text-center py-16">
+                <div className="w-16 h-16 bg-navy-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+                  <Workflow className="w-8 h-8 text-navy-400" />
+                </div>
+                <h3 className="text-xl font-semibold text-navy-900 mb-2">No Workflows Yet</h3>
+                <p className="text-navy-600 mb-6">Create your first workflow to get started</p>
+                <Link href="/workflow/builder">
+                  <Button className="bg-gradient-to-r from-violet-600 to-violet-700 hover:from-violet-700 hover:to-violet-800">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Your First Workflow
+                  </Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {formatWorkflows.map((workflow) => (
+                  <Card key={workflow.id} className="p-6 hover:shadow-lg transition-shadow border-navy-100">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="font-semibold text-navy-900 mb-1">{workflow.name}</h3>
+                        <p className="text-sm text-navy-500 mb-1">{workflow.description}</p>
+                        <p className="text-sm text-navy-500 font-mono">{workflow.link}</p>
+                        <p className="text-xs text-navy-400 mt-1">Created {workflow.created}</p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Badge className={workflow.status === 'active' ? "bg-emerald-100 text-emerald-700" : "bg-yellow-100 text-yellow-700"}>
+                          {workflow.status === 'active' ? 'Published' : 'Draft'}
+                        </Badge>
+                        <div className="flex items-center space-x-1">
+                          <Link href={`/workflow/builder?id=${workflow.id}`}>
+                            <Button variant="ghost" size="sm">
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                          </Link>
+                          <Link href={`/workflow/${workflow.id}`}>
+                            <Button variant="ghost" size="sm">
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                          </Link>
                           <Button variant="ghost" size="sm">
-                            <Edit className="w-4 h-4" />
+                            <MoreHorizontal className="w-4 h-4" />
                           </Button>
-                        </Link>
-                        <Link href={`/workflow/${workflow.id}`}>
-                          <Button variant="ghost" size="sm">
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                        </Link>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-3 gap-4 text-center mb-4">
-                    <div>
-                      <div className="text-2xl font-bold text-navy-900">{workflow.clients}</div>
-                      <div className="text-sm text-navy-500">Active Clients</div>
+                    <div className="grid grid-cols-4 gap-4 text-center mb-4">
+                      <div>
+                        <div className="text-2xl font-bold text-navy-900">{workflow.steps}</div>
+                        <div className="text-sm text-navy-500">Steps</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-violet-600">{workflow.usage}</div>
+                        <div className="text-sm text-navy-500">Usage</div>
+                      </div>
+                      <div>
+                        <div className="text-2xl font-bold text-emerald-600">{workflow.rating.toFixed(1)}</div>
+                        <div className="text-sm text-navy-500">Rating</div>
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-navy-700">{workflow.category}</div>
+                        <div className="text-sm text-navy-500">Category</div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="text-2xl font-bold text-emerald-600">{workflow.revenue}</div>
-                      <div className="text-sm text-navy-500">Revenue</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-violet-600">{workflow.completionRate}%</div>
-                      <div className="text-sm text-navy-500">Completion</div>
-                    </div>
-                  </div>
 
-                  <div className="flex items-center justify-between pt-4 border-t border-navy-100">
-                    <Button
-                      onClick={handleCopyLink}
-                      variant="outline"
-                      size="sm"
-                      className="text-navy-600 border-navy-200 bg-transparent"
-                    >
-                      <Copy className="w-4 h-4 mr-2" />
-                      Copy Link
-                    </Button>
-                    <Link href={`/workflow/${workflow.id}`}>
-                      <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-white">
-                        View Details
-                        <ArrowRight className="w-4 h-4 ml-2" />
-                      </Button>
-                    </Link>
-                  </div>
-                </Card>
-              ))}
-            </div>
+                    <div className="flex items-center justify-between pt-4 border-t border-navy-100">
+                          <WorkflowShareModal
+                            workflowId={workflow.id}
+                            workflowTitle={workflow.name}
+                            workflowDescription={workflow.description}
+                            username={userProfile?.username}
+                          >
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-navy-600 border-navy-200 bg-transparent"
+                            >
+                              <Share2 className="w-4 h-4 mr-2" />
+                              Share
+                            </Button>
+                          </WorkflowShareModal>
+                      <Link href={`/workflow/${workflow.id}`}>
+                        <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-white">
+                          View Details
+                          <ArrowRight className="w-4 h-4 ml-2" />
+                        </Button>
+                      </Link>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
