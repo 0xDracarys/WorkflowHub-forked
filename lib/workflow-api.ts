@@ -1,183 +1,157 @@
 // lib/workflow-api.ts
+import { getSupabaseClient } from "./supabase-client"
 
-import { type LucideIcon } from "lucide-react"
+// --- TYPE DEFINITIONS ---
 
-// Define the core data structures based on the minimal schema
-// In a real app, the LucideIcon type would likely be just a string
-// representing the icon's name, stored in the database.
-export interface WorkflowStep {
-  id: number
+// This interface matches the 'workflow_steps' table in Supabase.
+export interface SupabaseWorkflowStep {
+  id: string // UUID
+  workflow_id: string
   title: string
-  icon: string // Name of the Lucide icon
-  description: string
-  color: string
-  duration: string
-  automated: boolean
+  description: string | null
+  order_index: number
+  type: "form" | "meeting" | "payment" | "custom"
+  created_at: string
 }
 
-export interface Workflow {
-  id: string
-  name: string
-  description: string
-  userId: string
+// This interface matches the 'workflows' table in Supabase.
+export interface SupabaseWorkflow {
+  id: string // UUID
+  user_id: string
+  title: string
+  description: string | null
+  price: number | null
+  created_at: string
+}
+
+// This is a "rich" or "hydrated" type that we'll use on the frontend.
+export interface WorkflowStep extends SupabaseWorkflowStep {
+  iconName: string // The name of the Lucide icon to render
+  color: string // The background color class for the UI
+}
+
+// The primary workflow object for the frontend, including the hydrated steps.
+export interface Workflow extends SupabaseWorkflow {
   steps: WorkflowStep[]
-  // Future fields
-  // price: number;
-  // templateId: string;
 }
 
-export interface User {
-  id: string
-  name: string
-  email: string
+// --- UI MAPPING & HYDRATION ---
+
+const stepTypeUIMap = {
+  form: { iconName: "FileText", color: "bg-navy-500" },
+  meeting: { iconName: "Calendar", color: "bg-violet-600" },
+  payment: { iconName: "CheckCircle", color: "bg-emerald-600" },
+  custom: { iconName: "Settings", color: "bg-gray-400" },
 }
 
-// --- MOCKED DATABASE ---
-// This simulates a database for development purposes.
-let mockWorkflows: Workflow[] = [
-  {
-    id: "wf_1",
-    name: "UK Student Visa Process",
-    description: "Complete visa application support with document review and interview prep",
-    userId: "user_1",
-    steps: [
-      {
-        id: 1,
-        title: "Initial Consultation",
-        icon: "MessageSquare",
-        description: "30-min discovery call",
-        color: "bg-violet-500",
-        duration: "30 minutes",
-        automated: false,
-      },
-      {
-        id: 2,
-        title: "Document Collection",
-        icon: "Upload",
-        description: "Secure document upload",
-        color: "bg-emerald-500",
-        duration: "2-3 days",
-        automated: true,
-      },
-      {
-        id: 3,
-        title: "Application Review",
-        icon: "FileText",
-        description: "Expert application review",
-        color: "bg-navy-500",
-        duration: "1-2 days",
-        automated: false,
-      },
-      {
-        id: 4,
-        title: "Interview Preparation",
-        icon: "Calendar",
-        description: "Mock interview session",
-        color: "bg-violet-600",
-        duration: "1 hour",
-        automated: false,
-      },
-      {
-        id: 5,
-        title: "Final Submission",
-        icon: "CheckCircle",
-        description: "Application submission",
-        color: "bg-emerald-600",
-        duration: "1 day",
-        automated: true,
-      },
-    ],
-  },
-]
-
-// --- MOCKED API FUNCTIONS ---
-// These functions simulate making API calls to a backend.
-
-const simulateApiLatency = () => new Promise((resolve) => setTimeout(resolve, 300))
-
-export const getWorkflow = async (workflowId: string): Promise<Workflow | undefined> => {
-  await simulateApiLatency()
-  console.log(`API: Fetching workflow ${workflowId}`)
-  return mockWorkflows.find((wf) => wf.id === workflowId)
+const hydrateStep = (step: SupabaseWorkflowStep): WorkflowStep => {
+  const uiProps = stepTypeUIMap[step.type] || stepTypeUIMap.custom
+  return {
+    ...step,
+    iconName: uiProps.iconName,
+    color: uiProps.color,
+  }
 }
 
-export const addWorkflowStep = async (
+// --- API FUNCTIONS ---
+
+export const getWorkflow = async (workflowId: string): Promise<Workflow | null> => {
+  const supabase = getSupabaseClient()
+  const { data: workflowData, error: workflowError } = await supabase
+    .from("workflows")
+    .select("*")
+    .eq("id", workflowId)
+    .single()
+
+  if (workflowError) {
+    console.error("Error fetching workflow:", workflowError.message)
+    throw new Error(workflowError.message)
+  }
+
+  if (!workflowData) {
+    return null
+  }
+
+  const { data: stepsData, error: stepsError } = await supabase
+    .from("workflow_steps")
+    .select("*")
+    .eq("workflow_id", workflowId)
+    .order("order_index", { ascending: true })
+
+  if (stepsError) {
+    console.error("Error fetching workflow steps:", stepsError.message)
+    throw new Error(stepsError.message)
+  }
+
+  const hydratedSteps = stepsData.map(hydrateStep)
+
+  return {
+    ...workflowData,
+    steps: hydratedSteps,
+  }
+}
+
+export const createWorkflowStep = async (
   workflowId: string,
-  newStepData: Omit<WorkflowStep, "id">,
+  stepData: Omit<SupabaseWorkflowStep, "id" | "workflow_id" | "created_at">,
 ): Promise<WorkflowStep> => {
-  await simulateApiLatency()
-  const workflow = mockWorkflows.find((wf) => wf.id === workflowId)
-  if (!workflow) {
-    throw new Error("Workflow not found")
+  const supabase = getSupabaseClient()
+  const { data, error } = await supabase
+    .from("workflow_steps")
+    .insert([{ ...stepData, workflow_id: workflowId }])
+    .select()
+    .single()
+
+  if (error || !data) {
+    console.error("Error creating step:", error?.message)
+    throw new Error(error?.message || "Failed to create step")
   }
 
-  const newStep: WorkflowStep = {
-    ...newStepData,
-    id: Math.max(0, ...workflow.steps.map((s) => s.id)) + 1,
-  }
-
-  workflow.steps.push(newStep)
-  console.log(`API: Added step "${newStep.title}" to workflow ${workflowId}`)
-  return newStep
+  return hydrateStep(data)
 }
 
-export const updateWorkflowStep = async (workflowId: string, updatedStep: WorkflowStep): Promise<WorkflowStep> => {
-  await simulateApiLatency()
-  const workflow = mockWorkflows.find((wf) => wf.id === workflowId)
-  if (!workflow) {
-    throw new Error("Workflow not found")
+export const updateWorkflowStep = async (
+  stepId: string,
+  updates: Partial<Omit<SupabaseWorkflowStep, "id" | "workflow_id" | "created_at">>,
+): Promise<WorkflowStep> => {
+  const supabase = getSupabaseClient()
+  const { data, error } = await supabase
+    .from("workflow_steps")
+    .update(updates)
+    .eq("id", stepId)
+    .select()
+    .single()
+
+  if (error || !data) {
+    console.error("Error updating step:", error?.message)
+    throw new Error(error?.message || "Failed to update step")
   }
 
-  const stepIndex = workflow.steps.findIndex((s) => s.id === updatedStep.id)
-  if (stepIndex === -1) {
-    throw new Error("Step not found")
-  }
-
-  workflow.steps[stepIndex] = updatedStep
-  console.log(`API: Updated step "${updatedStep.title}" in workflow ${workflowId}`)
-  return updatedStep
+  return hydrateStep(data)
 }
 
-export const deleteWorkflowStep = async (workflowId: string, stepId: number): Promise<{ success: true }> => {
-  await simulateApiLatency()
-  const workflow = mockWorkflows.find((wf) => wf.id === workflowId)
-  if (!workflow) {
-    throw new Error("Workflow not found")
+export const deleteWorkflowStep = async (stepId: string): Promise<{ success: true }> => {
+  const supabase = getSupabaseClient()
+  const { error } = await supabase.from("workflow_steps").delete().eq("id", stepId)
+
+  if (error) {
+    console.error("Error deleting step:", error.message)
+    throw new Error(error.message)
   }
 
-  const initialLength = workflow.steps.length
-  workflow.steps = workflow.steps.filter((s) => s.id !== stepId)
-
-  if (workflow.steps.length === initialLength) {
-    throw new Error("Step not found to delete")
-  }
-
-  console.log(`API: Deleted step with id ${stepId} from workflow ${workflowId}`)
   return { success: true }
 }
 
-export const reorderWorkflowSteps = async (workflowId: string, orderedStepIds: number[]): Promise<WorkflowStep[]> => {
-  await simulateApiLatency()
-  const workflow = mockWorkflows.find((wf) => wf.id === workflowId)
-  if (!workflow) {
-    throw new Error("Workflow not found")
+export const reorderWorkflowSteps = async (
+  updates: { id: string; order_index: number }[],
+): Promise<{ success: true }> => {
+  const supabase = getSupabaseClient()
+  const { error } = await supabase.from("workflow_steps").upsert(updates)
+
+  if (error) {
+    console.error("Error reordering steps:", error.message)
+    throw new Error(error.message)
   }
 
-  const newSteps: WorkflowStep[] = []
-  const stepMap = new Map(workflow.steps.map((step) => [step.id, step]))
-
-  for (const id of orderedStepIds) {
-    const step = stepMap.get(id)
-    if (step) {
-      newSteps.push(step)
-    }
-  }
-
-  if (newSteps.length !== workflow.steps.length) {
-    throw new Error("Mismatch in step IDs during reorder")
-  }
-
-  workflow.steps = newSteps
-  console.log(`API: Reordered steps for workflow ${workflowId}`)
-  return workflow.steps
+  return { success: true }
 }

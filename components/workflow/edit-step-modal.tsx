@@ -13,43 +13,47 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { type WorkflowStep } from "@/lib/workflow-api"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { type WorkflowStep, type SupabaseWorkflowStep } from "@/lib/workflow-api"
 
 interface EditStepModalProps {
   isOpen: boolean
   onClose: () => void
-  onSave: (updatedStep: WorkflowStep) => void
+  onSave: (updates: Partial<Omit<SupabaseWorkflowStep, "id" | "workflow_id" | "created_at">>) => void
   step: WorkflowStep | null
 }
 
 export function EditStepModal({ isOpen, onClose, onSave, step }: EditStepModalProps) {
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
-  const [duration, setDuration] = useState("")
+  const [type, setType] = useState<SupabaseWorkflowStep["type"]>("custom")
 
   useEffect(() => {
     if (step) {
       setTitle(step.title)
-      setDescription(step.description)
-      setDuration(step.duration)
+      setDescription(step.description || "")
+      setType(step.type)
     }
   }, [step])
 
   const handleSave = () => {
     if (!step) return
 
-    const updatedStep = {
-      ...step,
+    const updates: Partial<Omit<SupabaseWorkflowStep, "id" | "workflow_id" | "created_at">> = {
       title,
       description,
-      duration,
+      type,
     }
-    onSave(updatedStep)
+    onSave(updates)
     onClose()
   }
 
-  // Handle the open state change of the dialog to call our onClose prop
-  // when the user closes it via escape key or clicking outside.
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       onClose()
@@ -89,22 +93,29 @@ export function EditStepModal({ isOpen, onClose, onSave, step }: EditStepModalPr
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="duration" className="text-right text-navy-300">
-              Duration
+            <Label htmlFor="type" className="text-right text-navy-300">
+              Type
             </Label>
-            <Input
-              id="duration"
-              value={duration}
-              onChange={(e) => setDuration(e.target.value)}
-              className="col-span-3 bg-navy-900 border-navy-600 placeholder:text-navy-400"
-            />
+            <Select value={type} onValueChange={(value) => setType(value as SupabaseWorkflowStep["type"])}>
+              <SelectTrigger className="col-span-3 bg-navy-900 border-navy-600">
+                <SelectValue placeholder="Select a step type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="meeting">Meeting</SelectItem>
+                <SelectItem value="form">Form</SelectItem>
+                <SelectItem value="payment">Payment</SelectItem>
+                <SelectItem value="custom">Custom</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose} className="text-white border-navy-600 hover:bg-navy-700">
             Cancel
           </Button>
-          <Button onClick={handleSave} className="bg-violet-600 hover:bg-violet-700 text-white">Save changes</Button>
+          <Button onClick={handleSave} className="bg-violet-600 hover:bg-violet-700 text-white">
+            Save changes
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
