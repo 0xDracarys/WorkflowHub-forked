@@ -26,6 +26,9 @@ export default function GoogleIntegrationPage() {
   const [authUrl, setAuthUrl] = useState<string | null>(null)
   const [userProfile, setUserProfile] = useState<any>(null)
   const [isConnected, setIsConnected] = useState(false)
+  const [importPreview, setImportPreview] = useState<any>(null)
+  const [isImporting, setIsImporting] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
 
   useEffect(() => {
     if (isLoaded && user) {
@@ -40,10 +43,61 @@ export default function GoogleIntegrationPage() {
       
       if (result.success) {
         setUserProfile(result.data)
-        setIsConnected(!!result.data?.googleTokens?.accessToken)
+        const connected = !!result.data?.googleTokens?.accessToken
+        setIsConnected(connected)
+        
+        // If newly connected, automatically preview import options
+        if (connected && !importPreview) {
+          previewImport()
+        }
       }
     } catch (err) {
       console.error('Error fetching user profile:', err)
+    }
+  }
+
+  const previewImport = async () => {
+    try {
+      const response = await fetch('/api/google/import')
+      const result = await response.json()
+      
+      if (result.success) {
+        setImportPreview(result.data)
+      }
+    } catch (err) {
+      console.error('Error previewing import:', err)
+    }
+  }
+
+  const importWorkflows = async (importTypes: string[]) => {
+    try {
+      setIsImporting(true)
+      setError(null)
+      setSuccess(null)
+
+      const response = await fetch('/api/google/import', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ importTypes }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        setSuccess(`Successfully imported ${result.data.totalImported} workflows!`)
+        setShowImportModal(false)
+        // Refresh the preview to show updated counts
+        setTimeout(() => previewImport(), 1000)
+      } else {
+        setError(result.error || 'Failed to import workflows')
+      }
+    } catch (err) {
+      setError('An unexpected error occurred during import')
+      console.error('Error importing workflows:', err)
+    } finally {
+      setIsImporting(false)
     }
   }
 
@@ -368,6 +422,194 @@ export default function GoogleIntegrationPage() {
               ))}
             </div>
           </Card>
+
+          {/* Workflow Import */}
+          {isConnected && importPreview && (
+            <Card className="p-6 border-navy-100">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-xl font-semibold text-navy-900 mb-2">Import Existing Workflows</h2>
+                  <p className="text-navy-600">
+                    We found content in your Google account that can be converted into workflows.
+                  </p>
+                </div>
+                <Button
+                  onClick={() => setShowImportModal(true)}
+                  className="bg-violet-600 hover:bg-violet-700"
+                  disabled={!importPreview || (importPreview.drive.count + importPreview.calendar.count + importPreview.gmail.count === 0)}
+                >
+                  <Workflow className="w-4 h-4 mr-2" />
+                  Import Workflows
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 border border-navy-200 rounded-lg">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <span className="text-xl">📁</span>
+                    <h3 className="font-semibold text-navy-900">Google Drive</h3>
+                  </div>
+                  <p className="text-2xl font-bold text-violet-600">{importPreview.drive.count}</p>
+                  <p className="text-sm text-navy-600">Documents, Sheets & Slides</p>
+                </div>
+
+                <div className="p-4 border border-navy-200 rounded-lg">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <span className="text-xl">📅</span>
+                    <h3 className="font-semibold text-navy-900">Calendar Events</h3>
+                  </div>
+                  <p className="text-2xl font-bold text-violet-600">{importPreview.calendar.count}</p>
+                  <p className="text-sm text-navy-600">Recurring meetings & events</p>
+                </div>
+
+                <div className="p-4 border border-navy-200 rounded-lg">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <span className="text-xl">✉️</span>
+                    <h3 className="font-semibold text-navy-900">Gmail Labels</h3>
+                  </div>
+                  <p className="text-2xl font-bold text-violet-600">{importPreview.gmail.count}</p>
+                  <p className="text-sm text-navy-600">Email organization systems</p>
+                </div>
+              </div>
+
+              {(importPreview.drive.count + importPreview.calendar.count + importPreview.gmail.count === 0) && (
+                <div className="mt-4 p-4 bg-navy-50 rounded-lg">
+                  <p className="text-navy-600 text-center">
+                    No importable content found. Create some documents, calendar events, or email labels in your Google account, then refresh this page.
+                  </p>
+                </div>
+              )}
+            </Card>
+          )}
+
+          {/* Import Modal */}
+          {showImportModal && importPreview && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <Card className="p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-semibold text-navy-900">Select What to Import</h3>
+                  <Button
+                    onClick={() => setShowImportModal(false)}
+                    variant="ghost"
+                    size="sm"
+                  >
+                    ×
+                  </Button>
+                </div>
+
+                <div className="space-y-6">
+                  {importPreview.drive.count > 0 && (
+                    <div>
+                      <div className="flex items-center space-x-2 mb-3">
+                        <input
+                          type="checkbox"
+                          id="import-drive"
+                          className="w-4 h-4 text-violet-600 border-navy-300 rounded focus:ring-violet-500"
+                        />
+                        <label htmlFor="import-drive" className="font-medium text-navy-900">
+                          Google Drive ({importPreview.drive.count} items)
+                        </label>
+                      </div>
+                      <div className="ml-6 space-y-2">
+                        {importPreview.drive.items.slice(0, 3).map((item: any, index: number) => (
+                          <div key={index} className="p-2 bg-navy-50 rounded text-sm">
+                            <div className="font-medium text-navy-900">{item.title}</div>
+                            <div className="text-navy-600">{item.steps} steps • {item.category}</div>
+                          </div>
+                        ))}
+                        {importPreview.drive.items.length > 3 && (
+                          <div className="text-sm text-navy-500 ml-2">
+                            +{importPreview.drive.items.length - 3} more items
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {importPreview.calendar.count > 0 && (
+                    <div>
+                      <div className="flex items-center space-x-2 mb-3">
+                        <input
+                          type="checkbox"
+                          id="import-calendar"
+                          className="w-4 h-4 text-violet-600 border-navy-300 rounded focus:ring-violet-500"
+                        />
+                        <label htmlFor="import-calendar" className="font-medium text-navy-900">
+                          Google Calendar ({importPreview.calendar.count} events)
+                        </label>
+                      </div>
+                      <div className="ml-6 space-y-2">
+                        {importPreview.calendar.items.slice(0, 3).map((item: any, index: number) => (
+                          <div key={index} className="p-2 bg-navy-50 rounded text-sm">
+                            <div className="font-medium text-navy-900">{item.title}</div>
+                            <div className="text-navy-600">{item.steps} steps • {item.category}</div>
+                          </div>
+                        ))}
+                        {importPreview.calendar.items.length > 3 && (
+                          <div className="text-sm text-navy-500 ml-2">
+                            +{importPreview.calendar.items.length - 3} more events
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {importPreview.gmail.count > 0 && (
+                    <div>
+                      <div className="flex items-center space-x-2 mb-3">
+                        <input
+                          type="checkbox"
+                          id="import-gmail"
+                          className="w-4 h-4 text-violet-600 border-navy-300 rounded focus:ring-violet-500"
+                        />
+                        <label htmlFor="import-gmail" className="font-medium text-navy-900">
+                          Gmail Labels ({importPreview.gmail.count} labels)
+                        </label>
+                      </div>
+                      <div className="ml-6 space-y-2">
+                        {importPreview.gmail.items.slice(0, 3).map((item: any, index: number) => (
+                          <div key={index} className="p-2 bg-navy-50 rounded text-sm">
+                            <div className="font-medium text-navy-900">{item.title}</div>
+                            <div className="text-navy-600">{item.steps} steps • {item.category}</div>
+                          </div>
+                        ))}
+                        {importPreview.gmail.items.length > 3 && (
+                          <div className="text-sm text-navy-500 ml-2">
+                            +{importPreview.gmail.items.length - 3} more labels
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-end space-x-3 mt-6">
+                  <Button
+                    onClick={() => setShowImportModal(false)}
+                    variant="outline"
+                    disabled={isImporting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      const selectedTypes = []
+                      if (document.getElementById('import-drive')?.checked) selectedTypes.push('drive')
+                      if (document.getElementById('import-calendar')?.checked) selectedTypes.push('calendar')
+                      if (document.getElementById('import-gmail')?.checked) selectedTypes.push('gmail')
+                      if (selectedTypes.length > 0) {
+                        importWorkflows(selectedTypes)
+                      }
+                    }}
+                    disabled={isImporting}
+                    className="bg-violet-600 hover:bg-violet-700"
+                  >
+                    {isImporting ? 'Importing...' : 'Import Selected'}
+                  </Button>
+                </div>
+              </Card>
+            </div>
+          )}
 
           {/* Account Information */}
           {isConnected && userProfile && (
