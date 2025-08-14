@@ -19,7 +19,8 @@ import {
   Plus,
   Filter,
   MoreHorizontal,
-  Activity
+  Activity,
+  Share2
 } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import { UserProfile, Conversation, Message } from '../types'
@@ -28,6 +29,7 @@ import { UserProfileCard } from './UserProfileCard'
 import { ConversationList } from './ConversationList'
 import { MessageBubble } from './MessageBubble'
 import { formatTime, formatUserName } from '../lib'
+import { ProfileShareModal } from '../../components/ProfileShareModal'
 
 interface UserDashboardProps {
   currentUser: UserProfile
@@ -38,6 +40,7 @@ export function UserDashboard({ currentUser, className = '' }: UserDashboardProp
   const [activeTab, setActiveTab] = useState<'overview' | 'conversations' | 'profile' | 'settings'>('overview')
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null)
   const [messageInput, setMessageInput] = useState('')
+  const [showShareModal, setShowShareModal] = useState(false)
 
   // Hooks
   const { user, updateUser } = useUser(currentUser.clerkId)
@@ -382,7 +385,15 @@ export function UserDashboard({ currentUser, className = '' }: UserDashboardProp
             <Textarea value={currentUser.bio || ''} rows={4} />
           </div>
         </div>
-        <div className="flex justify-end mt-6">
+        <div className="flex justify-between mt-6">
+          <Button 
+            onClick={() => setShowShareModal(true)}
+            variant="outline" 
+            className="text-violet-600 border-violet-200 hover:bg-violet-50"
+          >
+            <Share2 className="w-4 h-4 mr-2" />
+            Share Profile
+          </Button>
           <Button className="bg-violet-600 hover:bg-violet-700">
             Save Changes
           </Button>
@@ -489,6 +500,13 @@ export function UserDashboard({ currentUser, className = '' }: UserDashboardProp
         {activeTab === 'profile' && renderProfileTab()}
         {activeTab === 'settings' && renderSettingsTab()}
       </div>
+      
+      {/* Profile Share Modal */}
+      <ProfileShareModal
+        user={currentUser}
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+      />
     </div>
   )
 }
