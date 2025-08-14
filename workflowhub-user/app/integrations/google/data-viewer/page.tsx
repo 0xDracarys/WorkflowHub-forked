@@ -15,8 +15,11 @@ import {
   Folder,
   Clock,
   User,
-  Tag
+  Tag,
+  Brain,
+  Sparkles
 } from 'lucide-react'
+import { AIWorkflowBuilder } from '@/components/AIWorkflowBuilder'
 
 interface GoogleFile {
   id: string
@@ -133,7 +136,7 @@ export default function GoogleDataViewer() {
 
         {/* Data Tabs */}
         <Tabs defaultValue="drive" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="drive" className="flex items-center space-x-2">
               <FileText className="w-4 h-4" />
               <span>Google Drive ({data.files.length})</span>
@@ -145,6 +148,10 @@ export default function GoogleDataViewer() {
             <TabsTrigger value="gmail" className="flex items-center space-x-2">
               <Mail className="w-4 h-4" />
               <span>Gmail ({data.labels.length})</span>
+            </TabsTrigger>
+            <TabsTrigger value="ai-builder" className="flex items-center space-x-2">
+              <Brain className="w-4 h-4" />
+              <span>AI Builder</span>
             </TabsTrigger>
           </TabsList>
 
@@ -341,6 +348,16 @@ export default function GoogleDataViewer() {
                 )}
               </div>
             </Card>
+          </TabsContent>
+
+          {/* AI Workflow Builder Tab */}
+          <TabsContent value="ai-builder" className="space-y-4">
+            <AIWorkflowBuilder 
+              onWorkflowGenerated={(workflow) => {
+                console.log('Generated workflow from Google data:', workflow)
+                // You could add navigation here to view the created workflow
+              }}
+            />
           </TabsContent>
         </Tabs>
 
