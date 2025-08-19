@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Bell, Search, Settings, User, Plus } from "lucide-react"
+import Link from "next/link"
 
 export function DashboardHeader() {
   return (
@@ -28,9 +29,11 @@ export function DashboardHeader() {
               <Button variant="ghost" size="sm">
                 <Bell className="w-5 h-5" />
               </Button>
-              <Button variant="ghost" size="sm">
-                <Settings className="w-5 h-5" />
-              </Button>
+              <Link href="/settings">
+                <Button variant="ghost" size="sm">
+                  <Settings className="w-5 h-5" />
+                </Button>
+              </Link>
               <Button variant="ghost" size="sm">
                 <User className="w-5 h-5" />
               </Button>

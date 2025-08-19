@@ -1,0 +1,79 @@
+# Docker Compose for Production
+
+services:
+  # Next.js Application
+  workflowhub:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      # Database
+      - MONGODB_URI=${MONGODB_URI}
+      - NODE_ENV=production
+      
+      # Authentication (Clerk)
+      - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
+      - NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+      - NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+      - NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard
+      - NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/onboarding
+      
+      # Google Integration
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
+      
+      # AI Integration (Optional)
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      
+      # App Configuration
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
+      
+    depends_on:
+      - mongodb
+    restart: unless-stopped
+    networks:
+      - workflowhub-network
+
+  # MongoDB (Optional - if you want local MongoDB instead of Atlas)
+  mongodb:
+    image: mongo:7.0
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME:-admin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:-password}
+      - MONGO_INITDB_DATABASE=workflowhub
+    volumes:
+      - mongodb_data:/data/db
+      - ./scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    restart: unless-stopped
+    networks:
+      - workflowhub-network
+
+  # Nginx Reverse Proxy (Optional - for production)
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - workflowhub
+    restart: unless-stopped
+    networks:
+      - workflowhub-network
+    profiles:
+      - production
+
+volumes:
+  mongodb_data:
+
+networks:
+  workflowhub-network:
+    driver: bridge

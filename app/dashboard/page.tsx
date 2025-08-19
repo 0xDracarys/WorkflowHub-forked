@@ -242,8 +242,8 @@ export default function DashboardPage() {
                 <Button variant="ghost" size="sm">
                   <Bell className="w-5 h-5" />
                 </Button>
-                <Link href="/google-integration">
-                  <Button variant="ghost" size="sm" title="Google Integration">
+                <Link href="/settings">
+                  <Button variant="ghost" size="sm" title="Settings">
                     <Settings className="w-5 h-5" />
                   </Button>
                 </Link>
