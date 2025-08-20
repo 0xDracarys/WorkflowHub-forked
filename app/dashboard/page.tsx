@@ -29,6 +29,8 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { WorkflowShareModal } from "@/components/workflow/workflow-share-modal"
+import { GoogleIntegrationSection } from "@/components/integrations/google-integration-section"
+import { useRouter } from "next/navigation"
 
 export default function DashboardPage() {
   const { user, isLoaded } = useUser()
@@ -42,7 +44,9 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null)
   const [userProfile, setUserProfile] = useState<any>(null)
 
-  const shareableLink = userProfile?.username ? `workflowhub.com/${userProfile.username}` : "workflowhub.com/profile"
+  const router = useRouter(); // Initialize useRouter
+
+  const shareableLink = user?.username ? `workflowhub.com/${user.username}` : "workflowhub.com/profile"
 
   // Fetch user data and workflows
   useEffect(() => {
@@ -103,6 +107,10 @@ export default function DashboardPage() {
     setTimeout(() => setCopiedLink(false), 2000)
   }
 
+  const handleGoogleConnectSuccess = () => {
+    router.refresh(); // Re-fetch data on the current page
+  };
+
   // Calculate stats from real data
   const stats = [
     {
@@ -161,7 +169,11 @@ export default function DashboardPage() {
         workflow: workflows.find(w => w._id === client.workflowId)?.title || 'Unknown Workflow',
         applied: new Date(client.createdAt).toLocaleDateString(),
         avatar: client.avatar || "/placeholder.svg",
-        email: client.email
+        email: client.email,
+        progress: undefined, // Explicitly set to undefined
+        currentStep: undefined, // Explicitly set to undefined
+        review: undefined, // Explicitly set to undefined
+        completed: undefined, // Explicitly set to undefined
       })),
       color: "bg-violet-100 border-violet-200",
       headerColor: "bg-violet-500",
@@ -175,7 +187,10 @@ export default function DashboardPage() {
         progress: client.progress || 0,
         avatar: client.avatar || "/placeholder.svg",
         email: client.email,
-        currentStep: client.currentStep
+        currentStep: client.currentStep,
+        applied: undefined, // Explicitly set to undefined
+        review: undefined, // Explicitly set to undefined
+        completed: undefined, // Explicitly set to undefined
       })),
       color: "bg-emerald-100 border-emerald-200",
       headerColor: "bg-emerald-500",
@@ -188,7 +203,11 @@ export default function DashboardPage() {
         workflow: workflows.find(w => w._id === client.workflowId)?.title || 'Unknown Workflow',
         review: client.currentStep || 'Pending Review',
         avatar: client.avatar || "/placeholder.svg",
-        email: client.email
+        email: client.email,
+        progress: undefined, // Explicitly set to undefined
+        currentStep: undefined, // Explicitly set to undefined
+        applied: undefined, // Explicitly set to undefined
+        completed: undefined, // Explicitly set to undefined
       })),
       color: "bg-navy-100 border-navy-200",
       headerColor: "bg-navy-500",
@@ -201,7 +220,11 @@ export default function DashboardPage() {
         workflow: workflows.find(w => w._id === client.workflowId)?.title || 'Unknown Workflow',
         completed: new Date(client.updatedAt).toLocaleDateString(),
         avatar: client.avatar || "/placeholder.svg",
-        email: client.email
+        email: client.email,
+        progress: undefined, // Explicitly set to undefined
+        currentStep: undefined, // Explicitly set to undefined
+        review: undefined, // Explicitly set to undefined
+        applied: undefined, // Explicitly set to undefined
       })),
       color: "bg-emerald-50 border-emerald-200",
       headerColor: "bg-emerald-600",
@@ -303,7 +326,7 @@ export default function DashboardPage() {
                     </>
                   )}
                 </Button>
-                <Link href="/hub/sarahchen">
+                <Link href={`/hub/${user?.username || 'user'}`}>
                   <Button
                     variant="secondary"
                     size="sm"
@@ -331,6 +354,7 @@ export default function DashboardPage() {
             { id: "clients", label: "Clients" },
             { id: "workflows", label: "Workflows" },
             { id: "payments", label: "Payments" },
+            { id: "integrations", label: "Integrations" },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -596,6 +620,17 @@ export default function DashboardPage() {
             <Button variant="outline" className="text-navy-600 border-navy-200 bg-transparent">
               Coming Soon
             </Button>
+          </div>
+        )}
+
+        {activeTab === "integrations" && (
+          <div className="text-center py-16">
+            <div className="w-16 h-16 bg-navy-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <Settings className="w-8 h-8 text-navy-400" />
+            </div>
+            <h3 className="text-xl font-semibold text-navy-900 mb-2">Integrations</h3>
+            <p className="text-navy-600 mb-6">Manage your third-party integrations here.</p>
+            <GoogleIntegrationSection userProfile={userProfile} onConnectSuccess={handleGoogleConnectSuccess} />
           </div>
         )}
       </main>

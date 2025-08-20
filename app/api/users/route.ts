@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { UserAPI } from '@/lib/user-api'
+import { clerkClient } from '@clerk/nextjs/server'
 
 // GET /api/users - Get current user or all providers
 export async function GET(request: NextRequest) {
@@ -57,6 +58,8 @@ export async function POST(request: NextRequest) {
     
     // Ensure clerkId matches authenticated user
     userData.clerkId = clerkId
+    const user = await clerkClient.users.getUser(clerkId);
+    userData.username = user.username;
 
     const result = await UserAPI.createUser(userData)
     
@@ -88,6 +91,9 @@ export async function PUT(request: NextRequest) {
 
     const updateData = await request.json()
     
+    const user = await clerkClient.users.getUser(clerkId);
+    updateData.username = user.username;
+
     const result = await UserAPI.updateUser(clerkId, updateData)
     
     if (!result.success) {

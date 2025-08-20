@@ -104,6 +104,34 @@ export class UserAPI {
     }
   }
 
+  static async getUserByUsername(username: string): Promise<ApiResponse<User>> {
+    try {
+      const client = await clientPromise
+      const db = client.db('workflowhub')
+      const collection = db.collection<User>(COLLECTIONS.USERS)
+
+      const user = await collection.findOne({ username })
+      
+      if (user) {
+        return {
+          success: true,
+          data: user
+        }
+      } else {
+        return {
+          success: false,
+          error: 'User not found'
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching user by username:', error)
+      return {
+        success: false,
+        error: 'Internal server error'
+      }
+    }
+  }
+
   static async updateUser(clerkId: string, updateData: Partial<User>): Promise<ApiResponse<User>> {
     try {
       const client = await clientPromise

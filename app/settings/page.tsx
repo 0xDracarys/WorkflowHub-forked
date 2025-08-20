@@ -8,8 +8,38 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { ArrowLeft, User, Bell, Shield, CreditCard, Save } from "lucide-react"
 import Link from "next/link"
+import { useUser } from "@clerk/nextjs"
+import { useState, useEffect } from "react"
 
 export default function SettingsPage() {
+  const { user } = useUser()
+  const [displayName, setDisplayName] = useState(user?.firstName || "")
+  const [email, setEmail] = useState(user?.emailAddresses[0]?.emailAddress || "")
+  const [bio, setBio] = useState("")
+
+  useEffect(() => {
+    setDisplayName(user?.firstName || "")
+    setEmail(user?.emailAddresses[0]?.emailAddress || "")
+    setBio(user?.publicMetadata.bio || "")
+  }, [user])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    try {
+      await user.update({
+        firstName: displayName,
+        emailAddress: email, // Clerk handles email updates/verifications
+        publicMetadata: { bio },
+      });
+      alert("Profile updated successfully!");
+    } catch (error) {
+      console.error("Failed to update profile:", error);
+      alert("Failed to update profile. Please try again.");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-violet-50/30 to-navy-50/20">
       {/* Header */}
@@ -41,20 +71,29 @@ export default function SettingsPage() {
               <h2 className="text-xl font-semibold text-navy-900">Profile Settings</h2>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <Label className="text-navy-700 font-medium">Display Name</Label>
-                <Input placeholder="Sarah Chen" className="mt-2" />
+            <form onSubmit={handleSubmit}>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <Label className="text-navy-700 font-medium">Display Name</Label>
+                  <Input placeholder="Sarah Chen" className="mt-2" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-navy-700 font-medium">Email</Label>
+                  <Input placeholder="sarah@example.com" className="mt-2" value={email} onChange={(e) => setEmail(e.target.value)} />
+                </div>
+                <div className="md:col-span-2">
+                  <Label className="text-navy-700 font-medium">Bio</Label>
+                  <Textarea placeholder="Tell clients about your expertise..." className="mt-2 min-h-[100px]" value={bio} onChange={(e) => setBio(e.target.value)} />
+                </div>
               </div>
-              <div>
-                <Label className="text-navy-700 font-medium">Email</Label>
-                <Input placeholder="sarah@example.com" className="mt-2" />
+              {/* Save Button */}
+              <div className="flex justify-end mt-6">
+                <Button type="submit" className="bg-gradient-to-r from-violet-600 to-violet-700 hover:from-violet-700 hover:to-violet-800 text-white">
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Changes
+                </Button>
               </div>
-              <div className="md:col-span-2">
-                <Label className="text-navy-700 font-medium">Bio</Label>
-                <Textarea placeholder="Tell clients about your expertise..." className="mt-2 min-h-[100px]" />
-              </div>
-            </div>
+            </form>
           </Card>
 
           {/* Notification Settings */}
@@ -91,29 +130,29 @@ export default function SettingsPage() {
 
           {/* Coming Soon Placeholders */}
           <div className="grid md:grid-cols-2 gap-6">
-            <Card className="p-6 border-navy-100 opacity-60">
+            <Card className="p-6 border-navy-100">
               <div className="flex items-center space-x-2 mb-4">
-                <Shield className="w-5 h-5 text-navy-400" />
-                <h2 className="text-xl font-semibold text-navy-500">Security</h2>
+                <Shield className="w-5 h-5 text-violet-600" />
+                <h2 className="text-xl font-semibold text-navy-900">Security</h2>
               </div>
-              <p className="text-navy-400 text-center py-8">Coming Soon</p>
+              <p className="text-navy-600 mb-4">Manage your password, two-factor authentication, and connected devices.</p>
+              <Link href="https://dashboard.clerk.com/apps/APP_ID/users" target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" className="w-full">
+                  Go to Security Settings
+                </Button>
+              </Link>
             </Card>
 
-            <Card className="p-6 border-navy-100 opacity-60">
+            <Card className="p-6 border-navy-100">
               <div className="flex items-center space-x-2 mb-4">
-                <CreditCard className="w-5 h-5 text-navy-400" />
-                <h2 className="text-xl font-semibold text-navy-500">Billing</h2>
+                <CreditCard className="w-5 h-5 text-violet-600" />
+                <h2 className="text-xl font-semibold text-navy-900">Billing</h2>
               </div>
-              <p className="text-navy-400 text-center py-8">Coming Soon</p>
+              <p className="text-navy-600 mb-4">View your subscription, payment methods, and billing history.</p>
+              <Button variant="outline" className="w-full" disabled>
+                Billing Portal (Coming Soon)
+              </Button>
             </Card>
-          </div>
-
-          {/* Save Button */}
-          <div className="flex justify-end">
-            <Button className="bg-gradient-to-r from-violet-600 to-violet-700 hover:from-violet-700 hover:to-violet-800 text-white">
-              <Save className="w-4 h-4 mr-2" />
-              Save Changes
-            </Button>
           </div>
         </div>
       </div>
